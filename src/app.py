@@ -9,7 +9,7 @@ import os
 def create_app():
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-me-in-production")
-    db_url = os.environ.get("DATABASE_URL", "sqlite:///secureapi.db")
+    db_url = os.environ.get("DATABASE_URL", "sqlite:////home/samar/secureapi/secureapi.db")
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -24,6 +24,9 @@ def create_app():
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(tasks_bp, url_prefix="/tasks")
+
+    with app.app_context():
+        db.create_all()
 
     @app.get("/health")
     def health():
