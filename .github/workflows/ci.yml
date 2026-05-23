@@ -1,0 +1,155 @@
+name: CI/CD pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/secureapi
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Stage 1: Lint + unit tests
+  # ──────────────────────────────────────────────
+  test:
+    name: Lint and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install flake8 pytest pytest-cov
+
+      - name: Lint with flake8
+        run: |
+          flake8 src/ tests/ --max-line-length=100 --ignore=E501,W503
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ -v --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  # ──────────────────────────────────────────────
+  # Stage 2: SAST — Bandit security scan
+  # ──────────────────────────────────────────────
+  sast:
+    name: SAST scan (Bandit)
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Bandit
+        run: pip install bandit[toml]
+
+      - name: Run Bandit scan
+        run: |
+          bandit -r src/ \
+            -f json \
+            -o bandit-report.json \
+            --severity-level medium \
+            --confidence-level medium \
+            || true
+
+      - name: Fail on HIGH severity findings
+        run: |
+          bandit -r src/ \
+            --severity-level high \
+            --confidence-level high \
+            -f txt
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+  # ──────────────────────────────────────────────
+  # Stage 3: Build Docker image + Trivy scan
+  # ──────────────────────────────────────────────
+  build-and-scan:
+    name: Build and scan image (Trivy)
+    runs-on: ubuntu-latest
+    needs: sast
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t $IMAGE_NAME:$IMAGE_TAG .
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          format: table
+          exit-code: "1"
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Save image tarball
+        run: docker save $IMAGE_NAME:$IMAGE_TAG -o image.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: image.tar
+          retention-days: 1
+
+  # ──────────────────────────────────────────────
+  # Stage 4: Push to DockerHub (main branch only)
+  # ──────────────────────────────────────────────
+  push:
+    name: Push to DockerHub
+    runs-on: ubuntu-latest
+    needs: build-and-scan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Docker image
+        run: docker load -i image.tar
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Tag and push image
+        run: |
+          docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:$IMAGE_TAG
+          docker push $IMAGE_NAME:latest
+
+      - name: Image digest summary
+        run: echo "Pushed $IMAGE_NAME:$IMAGE_TAG to DockerHub"
