@@ -28,7 +28,7 @@ def require_auth(f):
                 current_app.config["SECRET_KEY"],
                 algorithms=["HS256"],
             )
-            request.user_id = payload["sub"]
+            request.user_id = int(payload["sub"])
         except jwt.ExpiredSignatureError:
             return jsonify({"error": "Token has expired"}), 401
         except jwt.InvalidTokenError:
