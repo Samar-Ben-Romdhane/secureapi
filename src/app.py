@@ -4,6 +4,7 @@ from flask_limiter.util import get_remote_address
 from src.models.models import db
 from src.routes.auth import auth_bp
 from src.routes.tasks import tasks_bp
+from dotenv import load_dotenv
 import os
 
 def create_app():
