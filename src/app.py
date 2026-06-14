@@ -6,8 +6,11 @@ from src.routes.auth import auth_bp
 from src.routes.tasks import tasks_bp
 from dotenv import load_dotenv
 import os
+
+
 load_dotenv()
-print("DEBUG SECRET_KEY:", os.environ.get("SECRET_KEY", "NOT FOUND")[:15]
+
+
 def create_app():
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-me-in-production")
@@ -17,7 +20,7 @@ def create_app():
 
     db.init_app(app)
 
-    limiter = Limiter(
+    Limiter(
         get_remote_address,
         app=app,
         default_limits=["100 per hour", "20 per minute"],
@@ -35,6 +38,7 @@ def create_app():
         return {"status": "ok"}, 200
 
     return app
+
 
 if __name__ == "__main__":
     app = create_app()
