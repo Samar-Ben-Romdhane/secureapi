@@ -1,4 +1,4 @@
-from flask import Flask, current_app
+from flask import Flask
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from src.models.models import db
@@ -6,11 +6,8 @@ from src.routes.auth import auth_bp
 from src.routes.tasks import tasks_bp
 from dotenv import load_dotenv
 import os
-
 load_dotenv()
-
-print("DEBUG SECRET_KEY:", os.environ.get("SECRET_KEY", "NOT FOUND")[:15])
-    
+print("DEBUG SECRET_KEY:", os.environ.get("SECRET_KEY", "NOT FOUND")[:15]
 def create_app():
     app = Flask(__name__)
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-me-in-production")
