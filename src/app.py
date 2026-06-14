@@ -9,9 +9,7 @@ import os
 
 load_dotenv()
 
-@app.get("/debug-key")
-def debug_key():
-    return {"key": current_app.config["SECRET_KEY"][:10]}
+print("DEBUG SECRET_KEY:", os.environ.get("SECRET_KEY", "NOT FOUND")[:15])
     
 def create_app():
     app = Flask(__name__)
