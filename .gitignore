@@ -1,0 +1,11 @@
+.env
+*.db
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+coverage.xml
+bandit-report.json
+image.tar
+dist/
+*.egg-info/

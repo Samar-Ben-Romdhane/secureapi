@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
+
 class User(db.Model):
     __tablename__ = "users"
 
@@ -13,7 +14,8 @@ class User(db.Model):
     tasks = db.relationship("Task", backref="owner", lazy=True)
 
     def to_dict(self):
-        return {"id": self.id, "username": self.username, "created_at": self.created_at.isoformat()}
+        return {"id": self.id, "username": self.username,
+                "created_at": self.created_at.isoformat()}
 
 
 class Task(db.Model):
