@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 def generate_token(user_id: int) -> str:
     payload = {
-        "sub": user_id,
+        "sub": str(user_id),
         "iat": datetime.now(timezone.utc),
         "exp": datetime.now(timezone.utc) + timedelta(hours=24),
     }
